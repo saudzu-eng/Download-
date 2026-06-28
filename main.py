@@ -40,15 +40,13 @@ def progress_hook(d, status_msg, chat_id):
 def process_tiktok_thread(message, url, status_msg):
     video_path = None
     try:
-        # الإعدادات الصارمة لإجبار تيك توك على إرسال أعلى جودة أصلية مرفوعة
+        # الإعدادات المتقدمة لجلب الجودة الأصلية والأبعاد الحقيقية للمقطع
         ydl_opts = {
-            # التعديل الخارق: يختار أعلى جودة للفيديو + أعلى جودة للصوت متاحين على خوادم تيك توك
             'format': 'bestvideo+bestaudio/best', 
             'outtmpl': f'{DOWNLOAD_DIR}/tk_{message.chat.id}_{int(time.time())}.%(ext)s',
             'no_warnings': True,
             'quiet': True,
-            'merge_output_format': 'mp4', # دمج الصوت والفيديو بأعلى دقة داخل صيغة mp4 مستقرة
-            # ترويسات متقدمة جداً لمحاكاة تطبيق تيك توك الحقيقي لمنع ضغط الجودة
+            'merge_output_format': 'mp4',
             'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
             'headers': {
                 'Accept': 'video/webm,video/mp4,video/*;q=0.9,*/*;q=0.8',
@@ -65,6 +63,10 @@ def process_tiktok_thread(message, url, status_msg):
             title = info.get('title', 'TikTok Video')
             duration = info.get('duration', 0)
             
+            # استخراج أبعاد الفيديو الأصلية (العرض والارتفاع) لإجبار تليجرام على عرضه بكامل الشاشة
+            width = info.get('width')
+            height = info.get('height')
+            
         bot.edit_message_text("🚀 **اكتمل التحميل بالجودة الأصلية! جاري الرفع الفوري...**", message.chat.id, status_msg.message_id, parse_mode='Markdown')
         
         if not video_path.endswith('.mp4'):
@@ -78,7 +80,9 @@ def process_tiktok_thread(message, url, status_msg):
                 video=video,
                 caption=f"🎬 **{title}**\n\n✨ تم التحميل بأعلى جودة HD أصلية وبدون علامة مائية.",
                 duration=int(duration) if duration else None,
-                supports_streaming=True, # يتيح التشغيل الفوري دون تعليق
+                width=width,   # تمرير العرض الأصلي
+                height=height, # تمرير الارتفاع الأصلي لتفادي الحواف السوداء
+                supports_streaming=True,
                 reply_to_message_id=message.message_id,
                 parse_mode='Markdown'
             )
@@ -87,7 +91,7 @@ def process_tiktok_thread(message, url, status_msg):
             
     except Exception as e:
         print(f"Error: {e}")
-        bot.edit_message_text("❌ **فشل جلب المقطع بالجودة الكاملة!**\n\nالسيرفر واجه ضغطاً أو أن الفيديو محمي، يرجى المحاولة مرة أخرى.", message.chat.id, status_msg.message_id, parse_mode='Markdown')
+        bot.edit_message_text("❌ **فشل جلب المقطع بالجودة الكاملة!**\n\nيرجى المحاولة مرة أخرى.", message.chat.id, status_msg.message_id, parse_mode='Markdown')
     finally:
         if video_path and os.path.exists(video_path):
             try: os.remove(video_path)
